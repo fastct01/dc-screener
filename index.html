@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DC Site Screener</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%230a0a0f%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%279%27 fill=%27none%27 stroke=%27%2300d4ff%27 stroke-width=%273%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%273%27 fill=%27%2300d4ff%27/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <header id="title-bar">
+    <h1>DC SITE <span class="accent">SCREENER</span></h1>
+    <p class="subtitle">power-first feasibility · deterministic scoring · evidence trail</p>
+  </header>
+
+  <div id="boot" class="glass"><span class="spinner"></span><span id="boot-status">Starting…</span></div>
+
+  <button id="btn-menu" class="glass menu-btn" type="button" aria-controls="left" aria-expanded="true" aria-label="Toggle panel" title="Show / hide panel">&#8943;</button>
+  <button id="btn-history" class="glass menu-btn" type="button" aria-controls="history" aria-expanded="false" aria-label="History" title="History · past screenings">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+  </button>
+  <div id="history" class="glass" hidden>
+    <div class="history-head">
+      <h2>History</h2>
+      <button id="btn-history-clear" class="btn ghost small" type="button">Clear all</button>
+    </div>
+    <div id="history-list"></div>
+    <div id="history-empty" class="dim">No screenings yet. Every run is saved here automatically.</div>
+  </div>
+
+  <aside id="left" class="glass panel">
+    <section>
+      <h2>1 · Search area</h2>
+      <div class="row">
+        <button id="btn-draw" class="btn" type="button">Draw box on globe</button>
+        <button id="btn-pin" class="btn ghost" type="button">Drop pins</button>
+      </div>
+      <div class="grid2">
+        <label>Center lat <input id="in-lat" type="number" step="0.0001" value="31.85" /></label>
+        <label>Center lon <input id="in-lon" type="number" step="0.0001" value="-97.15" /></label>
+        <label>Half-size km <input id="in-half" type="number" step="1" min="5" max="150" value="40" /></label>
+        <label>Grid <select id="in-grid"><option value="3">3×3 (9)</option><option value="4">4×4 (16)</option><option value="5" selected>5×5 (25)</option><option value="6">6×6 (36)</option></select></label>
+      </div>
+      <div id="bbox-readout" class="mono dim">bbox: —</div>
+      <div id="pins-readout" class="mono dim" hidden></div>
+    </section>
+
+    <section>
+      <h2>2 · Requirement</h2>
+      <div class="grid2">
+        <label>IT load MW <input id="in-mw" type="number" step="1" min="1" value="100" /></label>
+        <label>kW / rack <input id="in-kw" type="number" step="1" min="1" value="130" /></label>
+        <label>Tier <select id="in-tier"><option value="2">Tier II</option><option value="3" selected>Tier III</option><option value="4">Tier IV</option></select></label>
+        <label>Cooling <select id="in-cooling"><option value="auto" selected>Auto (by density)</option><option value="air">Air</option><option value="rdhx">Rear-door HX</option><option value="dlc">Direct-to-chip</option><option value="immersion">Immersion</option></select></label>
+        <label>$ / kWh <input id="in-price" type="number" step="0.005" min="0.01" value="0.07" /></label>
+        <label>Utilization <input id="in-util" type="number" step="0.05" min="0.1" max="1" value="0.85" /></label>
+      </div>
+      <label class="check"><input id="in-fitout" type="checkbox" /> Include AI tenant fit-out ($25M/MW)</label>
+    </section>
+
+    <section>
+      <h2>3 · Weights</h2>
+      <div id="weights"></div>
+    </section>
+
+    <section>
+      <button id="btn-run" class="btn primary" type="button">Run screening</button>
+      <div id="progress" hidden>
+        <div class="bar"><div id="progress-fill"></div></div>
+        <div id="progress-stage" class="mono dim"></div>
+      </div>
+      <div id="run-error" class="error" hidden></div>
+      <button id="btn-show-results" class="btn ghost" type="button" hidden>Show results</button>
+    </section>
+
+    <section>
+      <h2>Layers</h2>
+      <div id="layers" class="chips">
+        <label class="chip"><input type="checkbox" data-layer="dcs" checked /> Existing DCs</label>
+        <label class="chip"><input type="checkbox" data-layer="dams" /> Dams</label>
+        <label class="chip"><input type="checkbox" data-layer="substations" checked /> Substations</label>
+        <label class="chip"><input type="checkbox" data-layer="lines" checked /> Lines</label>
+        <label class="chip"><input type="checkbox" data-layer="plants" checked /> Plants</label>
+        <label class="chip"><input type="checkbox" data-layer="water" /> Water</label>
+      </div>
+    </section>
+  </aside>
+
+  <aside id="right" class="glass panel" hidden>
+    <div class="panel-close-dock">
+      <button id="btn-close-results" class="btn ghost icon" type="button" title="Close results (Esc)" aria-label="Close results">&times;</button>
+    </div>
+    <div class="right-head">
+      <h2 id="results-title">Results</h2>
+      <div class="row">
+        <button id="btn-save-run" class="btn small" type="button" title="Save this screening to History under a name">Save screening</button>
+        <button id="btn-export-csv" class="btn ghost small" type="button">CSV</button>
+        <button id="btn-export-md" class="btn ghost small" type="button">Shortlist .md</button>
+        <button id="btn-export-json" class="btn ghost small" type="button">JSON</button>
+      </div>
+    </div>
+    <div id="results-table-wrap">
+      <table id="results-table"><thead><tr><th>#</th><th>ID</th><th>Score</th><th>Cov.</th><th>Sub-station</th><th>Line</th><th>Free-cool</th><th>Flood</th><th>State</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div id="detail" hidden>
+      <div class="detail-head">
+        <div><span id="detail-id" class="mono"></span> <span id="detail-score" class="score-pill"></span></div>
+        <div class="row">
+          <button id="btn-memo-md" class="btn ghost small" type="button">Memo .md</button>
+          <button id="btn-narrate" class="btn ghost small" type="button" title="Requires ANTHROPIC_API_KEY">Narrate with Claude</button>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button data-tab="scorecard" class="active" type="button">Scorecard</button>
+        <button data-tab="design" type="button">Design &amp; TCO</button>
+        <button data-tab="evidence" type="button">Evidence</button>
+        <button data-tab="memo" type="button">Memo</button>
+      </nav>
+      <div id="tab-scorecard" class="tab"></div>
+      <div id="tab-design" class="tab" hidden></div>
+      <div id="tab-evidence" class="tab" hidden></div>
+      <div id="tab-memo" class="tab" hidden><pre id="memo-text" class="memo"></pre></div>
+    </div>
+  </aside>
+
+  <div id="legend" class="glass mono" hidden>
+    <span class="sw" style="background:#ff4d4d"></span>0 <span class="sw" style="background:#ffd166"></span>50 <span class="sw" style="background:#4ade80"></span>100 · candidate score · <span class="sw sq" style="background:#00d4ff"></span>substation <span class="sw sq" style="background:#f0a63c"></span>plant <span class="sw sq" style="background:#c084fc"></span>existing DC
+  </div>
+  <div id="hint" class="glass mono" hidden></div>
+  <div id="popup" class="glass" hidden role="dialog" aria-label="Feature details">
+    <button id="popup-close" class="popup-close" type="button" aria-label="Close">×</button>
+    <div id="popup-kind" class="popup-kind mono"></div>
+    <div id="popup-title" class="popup-title"></div>
+    <div id="popup-body" class="popup-body"></div>
+    <div class="row popup-actions">
+      <button id="popup-fly" class="btn ghost small" type="button">Fly to</button>
+      <a id="popup-osm" class="btn ghost small" target="_blank" rel="noopener" hidden>Open in OSM</a>
+      <a id="popup-web" class="btn ghost small" target="_blank" rel="noopener" hidden>Website</a>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

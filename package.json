@@ -1,0 +1,27 @@
+{
+  "name": "dc-site-screener",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Data-center site-selection & feasibility screening agent — keyless 3D globe, deterministic multi-criteria scoring, evidence-trailed feasibility memos.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run data && vite build",
+    "preview": "vite preview",
+    "data": "node scripts/build-datasets.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
+    "cesium": "^1.124.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.10.0",
+    "vite": "^6.0.0",
+    "vite-plugin-cesium": "^1.2.23"
+  }
+}
